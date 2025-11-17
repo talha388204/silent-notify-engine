@@ -9,13 +9,53 @@ const Demo = () => {
   const [permission, setPermission] = useState<NotificationPermission>('default');
   const [subscription, setSubscription] = useState<PushSubscription | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [swRegistration, setSwRegistration] = useState<ServiceWorkerRegistration | null>(null);
+  const [swStatus, setSwStatus] = useState<string>('Not Registered');
+  const [showSubscriptionJson, setShowSubscriptionJson] = useState(false);
 
   useEffect(() => {
     // Check current permission status
     if ('Notification' in window) {
       setPermission(Notification.permission);
     }
+
+    // Check service worker status
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistration().then((registration) => {
+        if (registration) {
+          setSwRegistration(registration);
+          updateSwStatus(registration);
+          
+          // Listen for updates
+          registration.addEventListener('updatefound', () => {
+            setSwStatus('Update Found');
+          });
+        }
+      });
+
+      navigator.serviceWorker.ready.then((registration) => {
+        setSwRegistration(registration);
+        setSwStatus('Activated');
+        
+        // Check for existing subscription
+        registration.pushManager.getSubscription().then((sub) => {
+          if (sub) {
+            setSubscription(sub);
+          }
+        });
+      });
+    }
   }, []);
+
+  const updateSwStatus = (registration: ServiceWorkerRegistration) => {
+    if (registration.active) {
+      setSwStatus('Activated');
+    } else if (registration.waiting) {
+      setSwStatus('Waiting');
+    } else if (registration.installing) {
+      setSwStatus('Installing');
+    }
+  };
 
   const requestPermission = async () => {
     setIsLoading(true);
@@ -42,6 +82,7 @@ const Demo = () => {
       // Register service worker
       const registration = await navigator.serviceWorker.register('/sw.js');
       await registration.update();
+      setSwRegistration(registration);
 
       // Create push subscription
       const sub = await registration.pushManager.subscribe({
@@ -57,6 +98,42 @@ const Demo = () => {
     } catch (error) {
       console.error('Subscription error:', error);
       toast.error('Failed to create subscription');
+    }
+  };
+
+  const unsubscribeFromPush = async () => {
+    if (!subscription) {
+      toast.error('No active subscription');
+      return;
+    }
+
+    try {
+      await subscription.unsubscribe();
+      setSubscription(null);
+      toast.success('Unsubscribed from push notifications');
+    } catch (error) {
+      console.error('Unsubscribe error:', error);
+      toast.error('Failed to unsubscribe');
+    }
+  };
+
+  const handleSkipWaiting = () => {
+    if (swRegistration?.waiting) {
+      swRegistration.waiting.postMessage({ type: 'SKIP_WAITING' });
+      toast.success('Activating new service worker...');
+      window.location.reload();
+    }
+  };
+
+  const handleUpdate = async () => {
+    if (swRegistration) {
+      try {
+        await swRegistration.update();
+        toast.success('Checking for updates...');
+      } catch (error) {
+        console.error('Update error:', error);
+        toast.error('Failed to check for updates');
+      }
     }
   };
 
@@ -143,9 +220,49 @@ const Demo = () => {
 
         <Card>
           <CardHeader>
+            <CardTitle>Service Worker Status</CardTitle>
+            <CardDescription>
+              Service worker registration and control
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Status:</span>
+              <Badge variant={swStatus === 'Activated' ? "default" : "secondary"}>
+                {swStatus}
+              </Badge>
+            </div>
+
+            {swRegistration && (
+              <div className="flex gap-2">
+                <Button 
+                  onClick={handleUpdate}
+                  variant="outline"
+                  size="sm"
+                  className="flex-1"
+                >
+                  Check for Updates
+                </Button>
+                {swStatus === 'Waiting' && (
+                  <Button 
+                    onClick={handleSkipWaiting}
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                  >
+                    Activate New SW
+                  </Button>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
             <CardTitle>Push Subscription</CardTitle>
             <CardDescription>
-              Web Push subscription status
+              Web Push subscription management
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -157,11 +274,50 @@ const Demo = () => {
             </div>
 
             {subscription && (
-              <div className="p-4 bg-muted rounded-lg">
-                <p className="text-xs font-mono break-all text-muted-foreground">
-                  {subscription.endpoint.substring(0, 60)}...
-                </p>
-              </div>
+              <>
+                <div className="flex gap-2">
+                  <Button 
+                    onClick={unsubscribeFromPush}
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                  >
+                    Unsubscribe
+                  </Button>
+                  <Button 
+                    onClick={() => setShowSubscriptionJson(!showSubscriptionJson)}
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                  >
+                    {showSubscriptionJson ? 'Hide' : 'Show'} JSON
+                  </Button>
+                </div>
+
+                {showSubscriptionJson && (
+                  <div className="p-4 bg-muted rounded-lg max-h-48 overflow-auto">
+                    <pre className="text-xs font-mono text-muted-foreground whitespace-pre-wrap">
+                      {JSON.stringify({
+                        endpoint: subscription.endpoint,
+                        keys: {
+                          p256dh: subscription.toJSON().keys?.p256dh,
+                          auth: subscription.toJSON().keys?.auth
+                        }
+                      }, null, 2)}
+                    </pre>
+                  </div>
+                )}
+              </>
+            )}
+
+            {!subscription && permission === 'granted' && (
+              <Button 
+                onClick={subscribeToPush}
+                className="w-full"
+                size="sm"
+              >
+                Resubscribe to Push
+              </Button>
             )}
           </CardContent>
         </Card>

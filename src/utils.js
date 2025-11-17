@@ -9,14 +9,14 @@
  */
 const config = {
   // Main app origin (must match exactly)
-  mainAppOrigin: 'https://your-main-app-domain.com',
+  // Update this with your main app's domain
+  mainAppOrigin: window.location.origin,
   
-  // Backend API URL
-  backendUrl: 'https://your-backend-api.com',
+  // Backend API URL - Using Lovable Cloud edge functions
+  backendUrl: `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`,
   
   // VAPID public key for Web Push
-  // Generate using: npx web-push generate-vapid-keys
-  vapidPublicKey: 'YOUR_VAPID_PUBLIC_KEY_HERE'
+  vapidPublicKey: 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U'
 };
 
 /**

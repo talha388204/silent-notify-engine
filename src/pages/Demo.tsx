@@ -69,8 +69,8 @@ const Demo = () => {
     try {
       new Notification('Test Notification', {
         body: 'This is a test notification from NTE Demo',
-        icon: '/icon-192.png',
-        badge: '/icon-192.png',
+        icon: '/favicon.ico',
+        badge: '/favicon.ico',
         tag: 'test-notification',
       });
       toast.success('Test notification sent!');

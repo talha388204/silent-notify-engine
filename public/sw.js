@@ -7,7 +7,7 @@ const CACHE_NAME = 'nte-cache-v1';
 const CACHE_URLS = [
   '/',
   '/index.html',
-  '/src/main.js'
+  '/favicon.ico'
 ];
 
 // Install event
@@ -16,9 +16,17 @@ self.addEventListener('install', (event) => {
   
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then((cache) => {
+      .then(async (cache) => {
         console.log('[SW] Caching app shell');
-        return cache.addAll(CACHE_URLS);
+        await Promise.all(
+          CACHE_URLS.map(async (url) => {
+            try {
+              await cache.add(url);
+            } catch (err) {
+              console.warn('[SW] Failed to cache', url, err);
+            }
+          })
+        );
       })
       .then(() => self.skipWaiting())
   );

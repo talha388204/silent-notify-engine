@@ -10,7 +10,10 @@
 const config = {
   // Main app origin (must match exactly)
   // Update this with your main app's domain
-  mainAppOrigin: window.location.origin,
+  // For localhost: use your main app's port (e.g., 'http://localhost:5173')
+  mainAppOrigin: window.location.origin === 'http://localhost:5174' 
+    ? 'http://localhost:5173'  // Main app যে port এ run করছে
+    : window.location.origin,
   
   // Backend API URL - Using Lovable Cloud edge functions
   backendUrl: `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`,

@@ -9,11 +9,11 @@
  */
 const config = {
   // Main app origin (must match exactly)
-  // Update this with your main app's domain
-  // For localhost: use your main app's port (e.g., 'http://localhost:5173')
+  // Production: আপনার main app এর domain
+  // Localhost: আপনার main app যে port এ run করছে
   mainAppOrigin: window.location.origin === 'http://localhost:5174' 
-    ? 'http://localhost:5173'  // Main app যে port এ run করছে
-    : window.location.origin,
+    ? 'http://localhost:5173'  // Localhost testing
+    : 'https://al-quran-22267.vercel.app',  // Production main app
   
   // Backend API URL - Using Lovable Cloud edge functions
   backendUrl: `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`,

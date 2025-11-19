@@ -233,17 +233,18 @@ const Demo = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-secondary p-8">
-      <div className="max-w-4xl mx-auto space-y-8">
-        <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
-            <Bell className="w-8 h-8 text-primary" />
+    <div className="h-screen bg-gradient-to-br from-background to-secondary flex flex-col">
+      <ScrollArea className="flex-1">
+        <div className="max-w-4xl mx-auto space-y-8 p-8">
+          <div className="text-center space-y-2">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
+              <Bell className="w-8 h-8 text-primary" />
+            </div>
+            <h1 className="text-4xl font-bold text-foreground">NTE Demo</h1>
+            <p className="text-muted-foreground">
+              Notification Trigger Engine - Testing Interface
+            </p>
           </div>
-          <h1 className="text-4xl font-bold text-foreground">NTE Demo</h1>
-          <p className="text-muted-foreground">
-            Notification Trigger Engine - Testing Interface
-          </p>
-        </div>
 
         <Card>
           <CardHeader>
@@ -527,7 +528,8 @@ const Demo = () => {
             </p>
           </CardContent>
         </Card>
-      </div>
+        </div>
+      </ScrollArea>
     </div>
   );
 };

@@ -3,7 +3,16 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Bell, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { Bell, CheckCircle, XCircle, Loader2, Activity, MessageSquare } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
+
+interface MessageLog {
+  id: string;
+  type: string;
+  direction: 'incoming' | 'outgoing';
+  timestamp: number;
+  data: any;
+}
 
 const Demo = () => {
   const [permission, setPermission] = useState<NotificationPermission>('default');
@@ -12,6 +21,12 @@ const Demo = () => {
   const [swRegistration, setSwRegistration] = useState<ServiceWorkerRegistration | null>(null);
   const [swStatus, setSwStatus] = useState<string>('Not Registered');
   const [showSubscriptionJson, setShowSubscriptionJson] = useState(false);
+  
+  // Connection Status Monitor State
+  const [nteInitialized, setNteInitialized] = useState(false);
+  const [messageListenerActive, setMessageListenerActive] = useState(false);
+  const [messageLogs, setMessageLogs] = useState<MessageLog[]>([]);
+  const [showMessageLogs, setShowMessageLogs] = useState(true);
 
   useEffect(() => {
     // Check current permission status
@@ -45,6 +60,44 @@ const Demo = () => {
         });
       });
     }
+    
+    // Check NTE initialization status
+    const checkNTEStatus = () => {
+      // Check if service worker is registered and ready
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistration().then((reg) => {
+          setNteInitialized(!!reg);
+        });
+      }
+      
+      // Message listener is active if we're in an iframe or receiving messages
+      setMessageListenerActive(window.parent !== window);
+    };
+    
+    checkNTEStatus();
+    const statusInterval = setInterval(checkNTEStatus, 2000);
+    
+    // Listen for all window messages
+    const handleMessage = (event: MessageEvent) => {
+      const log: MessageLog = {
+        id: `${Date.now()}_${Math.random()}`,
+        type: event.data.type || 'Unknown',
+        direction: 'incoming',
+        timestamp: Date.now(),
+        data: event.data
+      };
+      
+      setMessageLogs(prev => [log, ...prev].slice(0, 50)); // Keep last 50 messages
+      
+      console.log('[NTE Monitor] Received message:', event.data);
+    };
+    
+    window.addEventListener('message', handleMessage);
+    
+    return () => {
+      clearInterval(statusInterval);
+      window.removeEventListener('message', handleMessage);
+    };
   }, []);
 
   const updateSwStatus = (registration: ServiceWorkerRegistration) => {
@@ -337,6 +390,129 @@ const Demo = () => {
             >
               Send Test Notification
             </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Activity className="w-5 h-5 text-primary" />
+                  Connection Status Monitor
+                </CardTitle>
+                <CardDescription>
+                  Real-time NTE engine status and message flow
+                </CardDescription>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowMessageLogs(!showMessageLogs)}
+              >
+                {showMessageLogs ? 'Hide' : 'Show'} Logs
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">NTE Engine:</span>
+                  <Badge variant={nteInitialized ? "default" : "secondary"}>
+                    {nteInitialized ? (
+                      <span className="flex items-center gap-1">
+                        <CheckCircle className="w-3 h-3" />
+                        Initialized
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1">
+                        <XCircle className="w-3 h-3" />
+                        Not Ready
+                      </span>
+                    )}
+                  </Badge>
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Message Listener:</span>
+                  <Badge variant={messageListenerActive ? "default" : "secondary"}>
+                    {messageListenerActive ? (
+                      <span className="flex items-center gap-1">
+                        <CheckCircle className="w-3 h-3" />
+                        Active
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1">
+                        <XCircle className="w-3 h-3" />
+                        Inactive
+                      </span>
+                    )}
+                  </Badge>
+                </div>
+              </div>
+            </div>
+            
+            {showMessageLogs && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium flex items-center gap-2">
+                    <MessageSquare className="w-4 h-4" />
+                    Message Flow ({messageLogs.length})
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setMessageLogs([])}
+                  >
+                    Clear
+                  </Button>
+                </div>
+                
+                <ScrollArea className="h-[300px] rounded-md border bg-muted/50 p-4">
+                  {messageLogs.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-8">
+                      No messages yet. Waiting for communication...
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {messageLogs.map((log) => (
+                        <div
+                          key={log.id}
+                          className={`p-3 rounded-lg text-xs ${
+                            log.direction === 'incoming'
+                              ? 'bg-blue-500/10 border border-blue-500/20'
+                              : 'bg-green-500/10 border border-green-500/20'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <Badge
+                              variant="outline"
+                              className={`text-xs ${
+                                log.direction === 'incoming'
+                                  ? 'border-blue-500/50 text-blue-600'
+                                  : 'border-green-500/50 text-green-600'
+                              }`}
+                            >
+                              {log.direction === 'incoming' ? '← IN' : '→ OUT'}
+                            </Badge>
+                            <span className="text-muted-foreground">
+                              {new Date(log.timestamp).toLocaleTimeString()}
+                            </span>
+                          </div>
+                          <div className="font-semibold mb-1">{log.type}</div>
+                          <pre className="text-xs overflow-x-auto whitespace-pre-wrap break-all">
+                            {JSON.stringify(log.data, null, 2)}
+                          </pre>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </ScrollArea>
+              </div>
+            )}
           </CardContent>
         </Card>
 
